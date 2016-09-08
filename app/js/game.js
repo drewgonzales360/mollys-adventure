@@ -50,8 +50,6 @@ function drawFloor() {
   ctx.fillRect(0, ctx.canvas.height - TILE_SIZE, ctx.canvas.width, TILE_SIZE)
 }
 
-drawFloor();
-drawCharacter(0);
 // height above floor feet height
 function drawCharacter(height) {
   if(height <  0 || height > ctx.canvas.height - TILE_SIZE){
@@ -62,7 +60,7 @@ function drawCharacter(height) {
   ctx.fillRect( TILE_SIZE, FLOOR-TILE_SIZE-height, TILE_SIZE, TILE_SIZE)
 }
 
-key.pressed.on("space", function(key_event){
+
   if (!onGround()) {
     return;
   }
@@ -136,7 +134,7 @@ function createLanding(timeToLanding, heightAboveGround, length) {
     }, 10)
     setTimeout(function(){
       clearInterval(land);
-    }, 100000); // stop watching the landing move.
+    }, 2000); // stop watching the landing move.
 
   }, timeToLanding);
 }
@@ -145,35 +143,25 @@ for(var i = 0; i < 40; i++){
   createLanding(i*3000, 100, 400);
 }
 
-setInterval(function(){
-  if (!onGround() && canJump) {
-    let time = 0;
-    let init = currentHeight;
-    var falling = setInterval(function(){
-      cleanHeight = Math.floor(Math.abs(fallGravity(time-.05) - fallGravity(time)));
-
-      console.log("I'M FUCKING FALLING");
-      currentHeight = fallGravity(time) + init;
-      drawCharacter(currentHeight);
-
-      if(onGround()){
-        clearInterval(falling);
-      }
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.fillStyle = "rgba(0,0,0,1)";
-      ctx.fillRect(TILE_SIZE, FLOOR-currentHeight-TILE_SIZE-cleanHeight-1,TILE_SIZE, cleanHeight+1);
-      ctx.globalCompositeOperation = "source-over";
-      drawFloor();
-      time += fallAnimation
-    }, 10);
-
-    setTimeout(function(){
-      canJump = true;
-      clearInterval(falling);
-    }, 500);
-  }
-}, 10);
 
 function fallGravity(time) {
   return -gForce*Math.pow(time,2);
 }
+
+var video = document.createElement('video');
+video.src = '../assets/sadmachine.mp4';
+video.play();
+var i;
+
+
+
+function background() {
+  i=window.setInterval(function() {
+    ctx.drawImage(video,0, 0, ctx.canvas.width, ctx.canvas.height-TILE_SIZE);
+    drawCharacter(currentHeight);
+    drawFloor();
+    checkFall();
+
+  },20);
+}
+background();
