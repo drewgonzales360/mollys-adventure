@@ -74,37 +74,22 @@ function gravity(t, initHeight){
 }
 
 function jump(t, iH) {
-  
+  return -600*Math.pow(t,2) + 800*t + iH;
 }
 
+// this function will only handle going up.
 key.pressed.on("space", function(){
-  if (Molly.falling || !canJump) {
-    return;
-  }
+  let iHeight = Molly.height;
   let t = 0;
-  let initH = Molly.height;
-  canJump = false;
-  var air = setInterval(function () {
-    t += .02
-    Molly.height = gravity(t, 800, initH);
-    // if (Molly.height <= 0) {
-    //   clearInterval(air)
-    //   Molly.height = 0;
-    //   canJump = true;
-    // }
-    // for (var i = 0; i < landings.length; i++) {
-    //   if (landings[i].landable  && gravity(time-0.02,800, initH) - gravity(time-0.01,800, initH) > 0) {
-    //     Molly.height = landings[i].y;
-    //     clearInterval(air);
-    //     canJump = true;
-    //   }
-    // }
+  let air = setInterval(function () {
+    Molly.height = jump(t, iHeight);
+    t += 0.02;
+    if (t >= 0.5) {
+      Molly.maxHeight = Molly.height;
+      Molly.falling = true;
+      clearInterval(air);
+    }
   }, 10);
-  setTimeout(function () {
-    clearInterval(air);
-    Molly.height = 0;
-    canJump = true;
-  }, 1000);
 });
 
 
@@ -155,17 +140,18 @@ function start() {
     l3.init();
 
     if (Molly.falling) {
-      Molly.height = gravity(t, 200);
+      Molly.height = gravity(t, Molly.maxHeight);
       t += 0.02
       if (Molly.height <= 0) {
         Molly.height = 0;
         Molly.falling = false;
       }
+      
     } else {
       Molly.falling = false
       t = 0;
     }
-  },20);
+  },10);
 }
 start();
 
