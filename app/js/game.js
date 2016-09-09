@@ -40,128 +40,136 @@ const LANDING     = 15;
 const SPEED       = 7;
 const FLOOR       = ctx.canvas.height - TILE_SIZE; // feet of character on ground
 
-var fallAnimation = 0.015;
-var gForce = 700;
 var currentHeight = 0; // feet of the character
+var time          = 0;
+var landings      = [];
 var canJump       = true;
 // as if in the game.
 function drawFloor() {
-  ctx.fillStyle = "black";
+  ctx.fillStyle = "black"
   ctx.fillRect(0, ctx.canvas.height - TILE_SIZE, ctx.canvas.width, TILE_SIZE)
 }
 
-// height above floor feet height
-function drawCharacter(height) {
-  if(height <  0 || height > ctx.canvas.height - TILE_SIZE){
-    height = 0;
+var Molly = {
+  height: 0,
+  falling: false,
+  maxHeight: 0,
+  draw: function(){
+    if(this.height <  0 || this.height > ctx.canvas.height - TILE_SIZE){
+      console.log("drawCharacter oob.");
+    }
+    if (this.height == 0) {
+      Molly.falling = false;
+    }
+    ctx.fillStyle = "green";
+    ctx.fillRect( TILE_SIZE, FLOOR-TILE_SIZE-this.height, TILE_SIZE, TILE_SIZE)
+  },
+  jump: function(){
+    Molly.falling = true;
+    this.height += 200
   }
-  // currentHeight = height;
-  ctx.fillStyle = "green";
-  ctx.fillRect( TILE_SIZE, FLOOR-TILE_SIZE-height, TILE_SIZE, TILE_SIZE)
+}
+function gravity(t, initHeight){
+  return -600*Math.pow(t,2) + initHeight;
 }
 
+function jump(t, iH) {
+  
+}
 
-  if (!onGround()) {
+key.pressed.on("space", function(){
+  if (Molly.falling || !canJump) {
     return;
   }
-  var time = 0;
-  let cleanHeight = 0;
-  var init = currentHeight
-  var airTime = setInterval(function(){
-    cleanHeight = Math.floor(Math.abs(gravity(time-.05) - gravity(time)));
-
-    // Once I land
-    if (gravity(time-.05) - gravity(time) > 0 && onGround()) {
-      canJump = true;
-      clearInterval(airTime);
-      currentHeight = gravity(time);
-      drawCharacter(currentHeight);
-    }
-
-    canJump = false;
-    currentHeight = gravity(time) + init;
-    drawCharacter(currentHeight);
-
-
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.fillStyle = "rgba(0,0,0,1)";
-    ctx.fillRect(TILE_SIZE, FLOOR-currentHeight-TILE_SIZE-cleanHeight-1,TILE_SIZE, cleanHeight+1);
-    ctx.fillRect(TILE_SIZE, FLOOR-currentHeight,                        TILE_SIZE, cleanHeight); // cover up under it
-    ctx.globalCompositeOperation = "source-over";
-    drawFloor();
-    time += fallAnimation
+  let t = 0;
+  let initH = Molly.height;
+  canJump = false;
+  var air = setInterval(function () {
+    t += .02
+    Molly.height = gravity(t, 800, initH);
+    // if (Molly.height <= 0) {
+    //   clearInterval(air)
+    //   Molly.height = 0;
+    //   canJump = true;
+    // }
+    // for (var i = 0; i < landings.length; i++) {
+    //   if (landings[i].landable  && gravity(time-0.02,800, initH) - gravity(time-0.01,800, initH) > 0) {
+    //     Molly.height = landings[i].y;
+    //     clearInterval(air);
+    //     canJump = true;
+    //   }
+    // }
   }, 10);
-
-  // Clean Memory leak
-  setTimeout(function(){
-    clearInterval(airTime)
-    drawFloor();
+  setTimeout(function () {
+    clearInterval(air);
+    Molly.height = 0;
     canJump = true;
-  }, 1500);
-})
-
-function gravity(t) {
-  let tempA = -gForce*Math.pow(t,2)+800*t;
-  return tempA;
-}
-
-function onGround() {
-  var bFoot = ctx.getImageData(TILE_SIZE+1, FLOOR-currentHeight+2, 1, 1);
-  var backFoot = bFoot.data;
-
-  var fFoot = ctx.getImageData(2*TILE_SIZE-1, FLOOR-currentHeight+2,1,1);
-  var frontFoot = fFoot.data;
-  // Loop over each pixel and invert the color.
-  var back  = backFoot[0] == 0 && backFoot[1] == 0 && backFoot[2] == 0 && backFoot[3] == 0;
-  var front = frontFoot[0] == 0 && frontFoot[1] == 0 && frontFoot[2] == 0 && backFoot[3] == 0;
-  if (back && front) {  // code for black opaque
-    return false;
-  }
-  return true;
-}
-
-function createLanding(timeToLanding, heightAboveGround, length) {
-  let w = ctx.canvas.width
-  setTimeout(function(){
-    let land = setInterval(function(){
-      ctx.fillStyle = "black";
-      ctx.fillRect(w, FLOOR-heightAboveGround, length, LANDING);
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.fillStyle = "rgba(0,0,0,1)";
-      ctx.fillRect(w+length, FLOOR-heightAboveGround,  TILE_SIZE, LANDING);
-      ctx.globalCompositeOperation = "source-over";
-      w -= SPEED;
-    }, 10)
-    setTimeout(function(){
-      clearInterval(land);
-    }, 2000); // stop watching the landing move.
-
-  }, timeToLanding);
-}
-
-for(var i = 0; i < 40; i++){
-  createLanding(i*3000, 100, 400);
-}
+  }, 1000);
+});
 
 
-function fallGravity(time) {
-  return -gForce*Math.pow(time,2);
-}
 
 var video = document.createElement('video');
 video.src = '../assets/sadmachine.mp4';
 video.play();
-var i;
 
+class Landing {
+  constructor() {
+    this.x = ctx.canvas.width;
+    this.y = ctx.canvas.height/2;
+    this.l = 400;
+    this.s = 3 * Math.random();
+    this.landable = false;
+  }
+  init() {
+    // Restart
+    if (this.x + this.l < 0) {
+      this.x = ctx.canvas.width;
+      this.y = (ctx.canvas.height - TILE_SIZE) * Math.random() ;
+      this.l = 100 * Math.random() + 200;
+      this.s = 3 * Math.random() + 3;
+    } else {
+      this.x-= this.s;
+    }
+    if (this.x < 2*TILE_SIZE && 2*TILE_SIZE < this.x + this.l && this.y < Molly.height) {
+      this.landable = true;
+    } else {
+      this.landable = false;
+    }
+    drawRect(this.x, this.y, this.l);
+  }
+}
 
-
-function background() {
-  i=window.setInterval(function() {
+var l1 = new Landing();
+var l2 = new Landing();
+var l3 = new Landing();
+landings = [l1, l2, l3];
+function start() {
+  let t = 0;
+  var animation=window.setInterval(function() {
     ctx.drawImage(video,0, 0, ctx.canvas.width, ctx.canvas.height-TILE_SIZE);
-    drawCharacter(currentHeight);
+    Molly.draw();
     drawFloor();
-    checkFall();
+    l1.init();
+    l2.init();
+    l3.init();
 
+    if (Molly.falling) {
+      Molly.height = gravity(t, 200);
+      t += 0.02
+      if (Molly.height <= 0) {
+        Molly.height = 0;
+        Molly.falling = false;
+      }
+    } else {
+      Molly.falling = false
+      t = 0;
+    }
   },20);
 }
-background();
+start();
+
+function drawRect(x, height, length) {
+  ctx.fillStyle = "black";
+  ctx.fillRect(x, FLOOR-height, length, LANDING);
+}
