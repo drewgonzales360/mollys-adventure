@@ -1,3 +1,4 @@
+
 /****************************************************************
 FileName: Map.js
 Kenneth Drew Gonzales
@@ -25,6 +26,10 @@ all follow this convention.
 Last Edited: 8/29/16
 ****************************************************************/
 
+const EventEmitter = require('events');
+class MyEmitter extends EventEmitter {}
+const myEmitter = new MyEmitter();
+
 const canvas      = document.getElementById("map");
 const ctx         = canvas.getContext("2d");
 const key         = require('key-emit')(document);
@@ -40,10 +45,10 @@ const LANDING     = 15;
 const SPEED       = 7;
 const FLOOR       = ctx.canvas.height - TILE_SIZE; // feet of character on ground
 
-var currentHeight = 0; // feet of the character
-var time          = 0;
+var landingIndex  = -1 // code for ground.
 var landings      = [];
 var canJump       = true;
+var canFall       = false;
 // as if in the game.
 function drawFloor() {
   ctx.fillStyle = "black"
@@ -52,21 +57,15 @@ function drawFloor() {
 
 var Molly = {
   height: 0,
-  falling: false,
   maxHeight: 0,
   draw: function(){
     if(this.height <  0 || this.height > ctx.canvas.height - TILE_SIZE){
       console.log("drawCharacter oob.");
     }
     if (this.height == 0) {
-      Molly.falling = false;
     }
     ctx.fillStyle = "green";
     ctx.fillRect( TILE_SIZE, FLOOR-TILE_SIZE-this.height, TILE_SIZE, TILE_SIZE)
-  },
-  jump: function(){
-    Molly.falling = true;
-    this.height += 200
   }
 }
 function gravity(t, initHeight){
@@ -79,17 +78,21 @@ function jump(t, iH) {
 
 // this function will only handle going up.
 key.pressed.on("space", function(){
+  if (!canJump) {
+    return;
+  }
+  canJump = false;
   let iHeight = Molly.height;
   let t = 0;
   let air = setInterval(function () {
     Molly.height = jump(t, iHeight);
-    t += 0.02;
-    if (t >= 0.5) {
+    t += 0.03;
+    if (t >= 0.6) {
       Molly.maxHeight = Molly.height;
-      Molly.falling = true;
+      myEmitter.emit('fall')
       clearInterval(air);
     }
-  }, 10);
+  }, 20);
 });
 
 
@@ -100,11 +103,11 @@ video.play();
 
 class Landing {
   constructor() {
-    this.x = ctx.canvas.width;
-    this.y = ctx.canvas.height/2;
-    this.l = 400;
-    this.s = 3 * Math.random();
-    this.landable = false;
+    this.x = ctx.canvas.width;      // Current x position on viewport
+    this.y = ctx.canvas.height/2;   // Current y position on viewport
+    this.l = 400;                   // Length of the landing
+    this.s = 3 * Math.random();     // Speed of the landing.
+    this.landable = false;          // Is the landing beneath me?
   }
   init() {
     // Restart
@@ -112,11 +115,11 @@ class Landing {
       this.x = ctx.canvas.width;
       this.y = (ctx.canvas.height - TILE_SIZE) * Math.random() ;
       this.l = 100 * Math.random() + 200;
-      this.s = 3 * Math.random() + 3;
+      this.s = 2 * Math.random() + 5;
     } else {
-      this.x-= this.s;
+      this.x -= this.s;
     }
-    if (this.x < 2*TILE_SIZE && 2*TILE_SIZE < this.x + this.l && this.y < Molly.height) {
+    if (this.x <= 2*TILE_SIZE && TILE_SIZE <= this.x + this.l && this.y <= Molly.height) {
       this.landable = true;
     } else {
       this.landable = false;
@@ -128,7 +131,9 @@ class Landing {
 var l1 = new Landing();
 var l2 = new Landing();
 var l3 = new Landing();
+var l4 = new Landing();
 landings = [l1, l2, l3];
+
 function start() {
   let t = 0;
   var animation=window.setInterval(function() {
@@ -138,20 +143,12 @@ function start() {
     l1.init();
     l2.init();
     l3.init();
-
-    if (Molly.falling) {
-      Molly.height = gravity(t, Molly.maxHeight);
-      t += 0.02
-      if (Molly.height <= 0) {
-        Molly.height = 0;
-        Molly.falling = false;
-      }
-      
-    } else {
-      Molly.falling = false
-      t = 0;
+    l4.init();
+    if (landingIndex > -1 && !landings[landingIndex].landable) {
+      landingIndex = -2; // code for falling
+      myEmitter.emit('fall');
     }
-  },10);
+  },20);
 }
 start();
 
@@ -159,3 +156,34 @@ function drawRect(x, height, length) {
   ctx.fillStyle = "black";
   ctx.fillRect(x, FLOOR-height, length, LANDING);
 }
+
+function closeEnough(x, y) {
+  if (Math.abs(x-y) < 30) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+myEmitter.on('fall', () => {
+  let t = 0;
+  let fallin = setInterval(function () {
+    Molly.height = gravity(t, Molly.maxHeight);
+    t += 0.03
+    if ( closeEnough(Molly.height, 0)) {
+      Molly.height = 0;
+      landingIndex = -1;
+      canJump = true;
+      clearInterval(fallin)
+    }
+    for (var i = 0; i < landings.length; i++) {
+      if (landings[i].landable && closeEnough(Molly.height, landings[i].y)) {
+        Molly.height = landings[i].y;
+        Molly.maxHeight = Molly.height;
+        landingIndex = i;
+        canJump = true;
+        clearInterval(fallin)
+      }
+    }
+  }, 20);
+});
