@@ -44,7 +44,8 @@ const VIEW_HEIGHT = 12;
 const LANDING     = 15;
 const SPEED       = 7;
 const FLOOR       = ctx.canvas.height - TILE_SIZE; // feet of character on ground
-
+const TIME_RATE   = 0.03;
+const FRAME_RATE  = 20;
 var landingIndex  = -1 // code for ground.
 var landings      = [];
 var canJump       = true;
@@ -59,10 +60,8 @@ var Molly = {
   height: 0,
   maxHeight: 0,
   draw: function(){
-    if(this.height <  0 || this.height > ctx.canvas.height - TILE_SIZE){
-      console.log("drawCharacter oob.");
-    }
-    if (this.height == 0) {
+    if(this.height <  0){
+      this.height = 0;
     }
     ctx.fillStyle = "green";
     ctx.fillRect( TILE_SIZE, FLOOR-TILE_SIZE-this.height, TILE_SIZE, TILE_SIZE)
@@ -79,6 +78,7 @@ function jump(t, iH) {
 // this function will only handle going up.
 key.pressed.on("space", function(){
   if (!canJump) {
+    console.log("Cant jump.");
     return;
   }
   canJump = false;
@@ -86,13 +86,14 @@ key.pressed.on("space", function(){
   let t = 0;
   let air = setInterval(function () {
     Molly.height = jump(t, iHeight);
-    t += 0.03;
+    t += TIME_RATE;
     if (t >= 0.6) {
+      console.log("Fell from jump.");
       Molly.maxHeight = Molly.height;
       myEmitter.emit('fall')
       clearInterval(air);
     }
-  }, 20);
+  }, FRAME_RATE);
 });
 
 
@@ -100,6 +101,7 @@ key.pressed.on("space", function(){
 var video = document.createElement('video');
 video.src = '../assets/sadmachine.mp4';
 video.play();
+video.muted = true;
 
 class Landing {
   constructor() {
@@ -132,10 +134,9 @@ var l1 = new Landing();
 var l2 = new Landing();
 var l3 = new Landing();
 var l4 = new Landing();
-landings = [l1, l2, l3];
+landings = [l1, l2, l3, l4];
 
 function start() {
-  let t = 0;
   var animation=window.setInterval(function() {
     ctx.drawImage(video,0, 0, ctx.canvas.width, ctx.canvas.height-TILE_SIZE);
     Molly.draw();
@@ -144,11 +145,15 @@ function start() {
     l2.init();
     l3.init();
     l4.init();
-    if (landingIndex > -1 && !landings[landingIndex].landable) {
+    if (landingIndex > -1 && !landings[landingIndex].landable && closeEnough(Molly.height, landings[landingIndex].y)) {
       landingIndex = -2; // code for falling
+      console.log("Falling off ledge");
       myEmitter.emit('fall');
     }
-  },20);
+    if (video.ended) {
+      clearInterval(animation);
+      window.location.href = `file://${__dirname}/../html/menu.html`    }
+  },FRAME_RATE);
 }
 start();
 
@@ -157,8 +162,8 @@ function drawRect(x, height, length) {
   ctx.fillRect(x, FLOOR-height, length, LANDING);
 }
 
-function closeEnough(x, y) {
-  if (Math.abs(x-y) < 30) {
+function closeEnough(molsHeight, y) {
+  if (Math.abs(molsHeight-y) < 20) {
     return true;
   } else {
     return false;
@@ -169,21 +174,22 @@ myEmitter.on('fall', () => {
   let t = 0;
   let fallin = setInterval(function () {
     Molly.height = gravity(t, Molly.maxHeight);
-    t += 0.03
+    t += TIME_RATE;
     if ( closeEnough(Molly.height, 0)) {
+      canJump = true;
       Molly.height = 0;
       landingIndex = -1;
-      canJump = true;
+      Molly.maxHeight = 0;
       clearInterval(fallin)
     }
     for (var i = 0; i < landings.length; i++) {
       if (landings[i].landable && closeEnough(Molly.height, landings[i].y)) {
+        canJump = true;
         Molly.height = landings[i].y;
         Molly.maxHeight = Molly.height;
         landingIndex = i;
-        canJump = true;
         clearInterval(fallin)
       }
     }
-  }, 20);
+  }, FRAME_RATE);
 });
