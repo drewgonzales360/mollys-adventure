@@ -1,28 +1,9 @@
-
 /****************************************************************
 FileName: Map.js
 Kenneth Drew Gonzales
 Pokemon Hope
 
 Description:
-This class is used to draw and initilize the map where the
-main character will adventure.
-
-A townMap is a small section of the WORLD that the player
-will navigate through. My hope is that each townMap will
-be loaded individualy.
-
-The viewport is the immediate screen that the user sees
-at all times. This view port is made of tiles, 17 wide,
-and 13 vertically.
-
-The topleft corner that is walkable is indexed 0,0. so
-insertGate
-initMap
-insertObstruction
-insertGate
-
-all follow this convention.
 Last Edited: 8/29/16
 ****************************************************************/
 
@@ -49,7 +30,6 @@ const FRAME_RATE  = 20;
 var landingIndex  = -1 // code for ground.
 var landings      = [];
 var canJump       = true;
-var canFall       = false;
 // as if in the game.
 function drawFloor() {
   ctx.fillStyle = "black"
@@ -95,8 +75,6 @@ key.pressed.on("space", function(){
     }
   }, FRAME_RATE);
 });
-
-
 
 var video = document.createElement('video');
 video.src = '../assets/sadmachine.mp4';
@@ -163,7 +141,7 @@ function drawRect(x, height, length) {
 }
 
 function closeEnough(molsHeight, y) {
-  if (Math.abs(molsHeight-y) < 20) {
+  if (Math.abs(molsHeight-y) < 30) {
     return true;
   } else {
     return false;
@@ -172,6 +150,7 @@ function closeEnough(molsHeight, y) {
 
 myEmitter.on('fall', () => {
   let t = 0;
+  canJump = false;
   let fallin = setInterval(function () {
     Molly.height = gravity(t, Molly.maxHeight);
     t += TIME_RATE;
