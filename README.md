@@ -4,6 +4,8 @@ Jump from stage to stage and shoot down the Antiplurs using the left
 mouse button. If you need to jump from stage to stage, use the space
 bar. If you fall the game will start over. 
 
+![alt tag](https://cloud.githubusercontent.com/assets/6912711/21535411/62c801ae-cd29-11e6-913b-64a01abda3d8.png)
+![alt tag](https://cloud.githubusercontent.com/assets/6912711/21535410/606fe71e-cd29-11e6-966b-dbd78df524c2.png)
 
 ## Installation
 
